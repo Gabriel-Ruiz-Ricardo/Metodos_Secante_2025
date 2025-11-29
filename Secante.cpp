@@ -7,7 +7,7 @@
 #include <conio.h>
 #include <map>
 #include <vector>
-#include "exprtk/exprtk.hpp"
+#include "exprtk.hpp"
 
 typedef exprtk::symbol_table<double> symbol_table_t;
 typedef exprtk::expression<double>     expression_t;
@@ -26,7 +26,7 @@ std::string validar_sintaxis_exprtk(const std::string& funcion_str);
 
 int main()
 {
-    while(1)
+    while(true)
     {
         int selector = Menu();
         if(selector == 3)
@@ -40,7 +40,6 @@ int main()
             Sintaxis();
             continue;
         }
-
         string funcion_ingresada = obtener_funcion();
         cout << "Funcion final ingresada: " << funcion_ingresada << endl;
         
@@ -102,7 +101,6 @@ int Menu(void)
         cout << "------------------------------------------" << endl;
         cout << endl << endl << "Seleccion: ";
         cin >> selector;
-        
         if (AntiCaracter(selector)) continue;
         if (RangoEntrada(selector, 1, 3)) continue;
         break;
@@ -183,7 +181,7 @@ string obtener_funcion()
         {"sin(", 4}, {"cos(", 4}, {"tan(", 4}, {"log(", 4}, {"exp(", 4}, 
         {"abs(", 4}, {"csc(", 4}, {"sec(", 4}, {"cot(", 4}, {"pi", 2}, {"e", 1}
     };
-    // Mapeo interno para la insercion
+    //Mapeo interno para la insercion
     const map<string, string> mapeo_insercion = 
     {
         {"s", "sin("},   {"c", "cos("},   {"t", "tan("},   {"l", "log("}, 
@@ -193,12 +191,11 @@ string obtener_funcion()
         {"ac", "acos("}, {"at", "atan("}, {"ex", "exp("} 
     };
 
-    while (!sintaxis_valida)
+    while (true)
     {
         mostrar_funcion(funcion);
         tecla = _getch(); 
-
-        if (tecla == 13) // Enter: Intentar salir del modo edición
+        if (tecla == 13) //Enter: Intentar salir del modo edición
         {
             if (!funcion.empty()) 
             {
@@ -210,17 +207,15 @@ string obtener_funcion()
                 if (error_msg.empty())
                 {
                     cout << "Sintaxis valida. ¿Desea continuar? (S/N): ";
-                    char confirm = _getch();        
+                    char confirm = _getch(); 
                     if (confirm == 'S' || confirm == 's') 
                     {
                         LimpiarPantalla();
-                        return funcion; // ¡Salida exitosa!
+                        return funcion;
                     } 
-                    // Si presiona 'N', continúa el bucle para seguir editando
                 }
                 else
                 {
-                    // Error de compilación detectado por ExprTK
                     cout << "==========================================" << endl;
                     cout << "      ERROR DE SINTAXIS DETECTADO         " << endl;
                     cout << "==========================================" << endl;
@@ -231,7 +226,7 @@ string obtener_funcion()
             }
             continue;
         }
-        else if (tecla == 8) // Backspace
+        else if (tecla == 8) //Backspace
         {
             int len = funcion.length();
             if (len > 0) 
@@ -251,7 +246,6 @@ string obtener_funcion()
                         }
                     }
                 }
-                    
                 if (!borrado_multiple) funcion.pop_back(); 
             }
             continue;
@@ -260,7 +254,6 @@ string obtener_funcion()
         {
             char siguiente = _getch(); 
             string pulsacion_doble = string(1, tecla) + siguiente;
-
             if (pulsacion_doble == "ex") 
             {
                 funcion += mapeo_insercion.at("ex");
@@ -281,7 +274,6 @@ string obtener_funcion()
         {
             char siguiente = _getch(); 
             string pulsacion_doble = string(1, tecla) + siguiente;
-
             if (mapeo_insercion.count(pulsacion_doble))
             {
                 funcion += mapeo_insercion.at(pulsacion_doble);
@@ -310,8 +302,8 @@ string obtener_funcion()
                 continue;
             }
             else if ((tecla >= '0' && tecla <= '9') || tecla == '.' || 
-                     tecla == '+' || tecla == '-' || tecla == '*' || 
-                     tecla == '/' || tecla == '^' || tecla == 'x' || tecla == ')') 
+                    tecla == '+' || tecla == '-' || tecla == '*' || 
+                    tecla == '/' || tecla == '^' || tecla == 'x' || tecla == ')') 
             {
                 funcion += tecla;
             }
@@ -321,25 +313,18 @@ string obtener_funcion()
             }
         }
     }
-    
-    // Este return nunca debería alcanzarse debido a la lógica del while
-    return funcion;
 }
 
 std::string validar_sintaxis_exprtk(const std::string& funcion_str)
 {
     double x_valor = 0.0;
-    
     symbol_table_t symbol_table;
     symbol_table.add_variable("x", x_valor); 
     symbol_table.add_constants(); // Agrega pi, e, etc.
-    
     expression_t expression;
     expression.register_symbol_table(symbol_table);
-    
     parser_t parser;
-    
-    // Intenta compilar. Si falla, obtiene los errores
+    //Intenta compilar. Si falla, obtiene los errores
     if (!parser.compile(funcion_str, expression)) 
     {
         std::string error_str = "";
@@ -355,6 +340,5 @@ std::string validar_sintaxis_exprtk(const std::string& funcion_str)
         }
         return error_str;
     }
-    
-    return ""; // Cadena vacía indica éxito
+    return "";
 }

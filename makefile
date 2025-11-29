@@ -1,8 +1,13 @@
-programa: Secante.cpp
-	c++ Secante.cpp -o programa -I ./exprtk -std=c++11 -O2 -Wa,-mbig-obj
+CXX = g++
+CXXFLAGS = -std=c++17 -O2 -Wa,-mbig-obj
+TARGET = programa
+SRC = Secante.cpp
 
-run: programa
-	./programa
+$(TARGET): $(SRC)
+	$(CXX) $(SRC) -o $(TARGET) $(CXXFLAGS)
+
+run: $(TARGET)
+	./$(TARGET)
 
 clean:
-	rm -f programa
+	rm -f $(TARGET) $(TARGET).exe
