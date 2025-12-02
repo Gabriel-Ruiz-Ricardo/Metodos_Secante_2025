@@ -35,6 +35,13 @@ struct ResultadoIteracion {
     int cifras_significativas;
 };
 
+// Nueva estructura para almacenar el historial completo
+struct HistorialCompleto {
+    vector<ResultadoIteracion> iteraciones;
+    bool exito;
+};
+
+// Declaración de funciones
 void LimpiarPantalla(void);
 bool AntiCaracter(int& selector);
 bool RangoEntrada(int selector, int min_val, int max_val);
@@ -55,9 +62,9 @@ int preguntar_num_iteraciones();
 double preguntar_error_relativo();
 int preguntar_cifras_significativas();
 int calcular_cifras_significativas(double error_relativo);
-ResultadoIteracion metodo_secante(const string& funcion_str, double x0, double x1, int max_iter, double tol_error, int cifras_objetivo, int criterio, bool& exito);
-void mostrar_resultado(const ResultadoIteracion& resultado, int criterio);
-void mostrar_resultados_multiples(const vector<pair<RangoRaiz, ResultadoIteracion>>& resultados, int criterio);
+HistorialCompleto metodo_secante(const string& funcion_str, double x0, double x1, int max_iter, double tol_error, int cifras_objetivo, int criterio);
+void mostrar_historial_completo(const HistorialCompleto& historial, int criterio);
+void mostrar_historiales_multiples(const vector<pair<RangoRaiz, HistorialCompleto>>& resultados, int criterio);
 bool preguntar_continuar(const string& mensaje);
 
 int main()
@@ -105,8 +112,6 @@ int main()
         
         while(continuar_raices)
         {
-
-            
             // 3. Buscar cambios de signo en el rango
             LimpiarPantalla();
             cout << "Buscando raices en el rango [" << x_min << ", " << x_max << "]..." << endl;
@@ -163,36 +168,34 @@ int main()
                 
                 if(seleccion_raiz == raices_encontradas.size() + 1) // Calcular todas
                 {
-                    vector<pair<RangoRaiz, ResultadoIteracion>> resultados_multiples;
+                    vector<pair<RangoRaiz, HistorialCompleto>> resultados_multiples;
                     
                     for(size_t i = 0; i < raices_encontradas.size(); i++)
                     {
                         double x0 = raices_encontradas[i].inicio;
                         double x1 = raices_encontradas[i].fin;
-                        bool exito = false;
                         
-                        ResultadoIteracion resultado = metodo_secante(funcion_trabajo, x0, x1, max_iter, tol_error, cifras_objetivo, criterio, exito);
+                        HistorialCompleto historial = metodo_secante(funcion_trabajo, x0, x1, max_iter, tol_error, cifras_objetivo, criterio);
                         
-                        if(exito)
+                        if(historial.exito)
                         {
-                            resultados_multiples.push_back(make_pair(raices_encontradas[i], resultado));
+                            resultados_multiples.push_back(make_pair(raices_encontradas[i], historial));
                         }
                     }
                     
-                    mostrar_resultados_multiples(resultados_multiples, criterio);
+                    mostrar_historiales_multiples(resultados_multiples, criterio);
                 }
                 else // Calcular una específica
                 {
                     int indice = seleccion_raiz - 1;
                     double x0 = raices_encontradas[indice].inicio;
                     double x1 = raices_encontradas[indice].fin;
-                    bool exito = false;
                     
-                    ResultadoIteracion resultado = metodo_secante(funcion_trabajo, x0, x1, max_iter, tol_error, cifras_objetivo, criterio, exito);
+                    HistorialCompleto historial = metodo_secante(funcion_trabajo, x0, x1, max_iter, tol_error, cifras_objetivo, criterio);
                     
-                    if(exito)
+                    if(historial.exito)
                     {
-                        mostrar_resultado(resultado, criterio);
+                        mostrar_historial_completo(historial, criterio);
                     }
                 }
                 
@@ -210,7 +213,6 @@ int main()
     return 0;
 }
 
-// Implementación de funciones existentes
 void LimpiarPantalla() 
 {
     system("cls"); 
@@ -329,6 +331,14 @@ void mostrar_funcion(const string& funcion)
     cout << "----------------------------------------" << endl;
     cout << "f(x) = " << funcion << " " << endl;
     cout << "----------------------------------------" << endl;
+}
+
+bool preguntar_continuar(const string& mensaje)
+{
+    LimpiarPantalla();
+    cout << mensaje;
+    char respuesta = _getch();
+    return (respuesta == 'S' || respuesta == 's');
 }
 
 string obtener_funcion()
@@ -817,145 +827,214 @@ int calcular_cifras_significativas(double error_relativo)
     return std::max(0, cifras_n);
 }
 
-ResultadoIteracion metodo_secante(const string& funcion_str, double x0, double x1, int max_iter, 
-                                   double tol_error, int cifras_objetivo, int criterio, bool& exito)
+HistorialCompleto metodo_secante(const string& funcion_str, double x0, double x1, int max_iter, 
+                                  double tol_error, int cifras_objetivo, int criterio)
 {
-ResultadoIteracion resultado;
-resultado.iteracion = 0;
-resultado.x_anterior = x0;
-resultado.x_actual = x1;
-exito = false;
-
-double f_x0 = evaluar_funcion(funcion_str, x0);
-double f_x1 = evaluar_funcion(funcion_str, x1);
-
-for(int i = 1; i <= max_iter; i++)
-{
-    if(fabs(f_x1 - f_x0) < 1e-15)
+    HistorialCompleto historial;
+    historial.exito = false;
+    
+    double f_x0 = evaluar_funcion(funcion_str, x0);
+    double f_x1 = evaluar_funcion(funcion_str, x1);
+    
+    for(int i = 1; i <= max_iter; i++)
     {
-        cout << "\nAdvertencia: Division por cero inminente. Deteniendo..." << endl;
-        break;
+        if(fabs(f_x1 - f_x0) < 1e-15)
+        {
+            cout << "\nAdvertencia: Division por cero inminente. Deteniendo..." << endl;
+            break;
+        }
+        
+        double x2 = x1 - f_x1 * (x1 - x0) / (f_x1 - f_x0);
+        
+        if(!isfinite(x2))
+        {
+            cout << "\nAdvertencia: Valor fuera de rango. Deteniendo..." << endl;
+            break;
+        }
+        
+        double f_x2 = evaluar_funcion(funcion_str, x2);
+        
+        if(isnan(f_x2))
+        {
+            cout << "\nAdvertencia: Funcion no evaluable en x = " << x2 << endl;
+            break;
+        }
+        
+        ResultadoIteracion resultado;
+        resultado.iteracion = i;
+        resultado.x_anterior = x1;
+        resultado.x_actual = x2;
+        resultado.f_x_actual = f_x2;
+        
+        if(x2 != 0)
+        {
+            resultado.error_absoluto = fabs(x2 - x1);
+            resultado.error_relativo = fabs((x2 - x1) / x2);
+            resultado.cifras_significativas = calcular_cifras_significativas(resultado.error_relativo);
+        }
+        else
+        {
+            resultado.error_absoluto = fabs(x2 - x1);
+            resultado.error_relativo = 0;
+            resultado.cifras_significativas = 15;
+        }
+        
+        // Guardar esta iteración en el historial
+        historial.iteraciones.push_back(resultado);
+        
+        // Verificar criterios de paro
+        bool detener = false;
+        
+        if(criterio == 1) // Por iteraciones
+        {
+            if(i >= max_iter) detener = true;
+        }
+        else if(criterio == 2) // Por error relativo
+        {
+            if(resultado.error_relativo < tol_error) detener = true;
+        }
+        else if(criterio == 3) // Por cifras significativas
+        {
+            if(resultado.cifras_significativas >= cifras_objetivo) detener = true;
+        }
+        
+        // Verificar convergencia (mismo resultado)
+        if(fabs(x2 - x1) < 1e-15)
+        {
+            cout << "\nConvergencia alcanzada (sin cambios entre iteraciones)." << endl;
+            detener = true;
+        }
+        
+        if(detener)
+        {
+            historial.exito = true;
+            break;
+        }
+        
+        // Actualizar para siguiente iteración
+        x0 = x1;
+        f_x0 = f_x1;
+        x1 = x2;
+        f_x1 = f_x2;
     }
     
-    double x2 = x1 - f_x1 * (x1 - x0) / (f_x1 - f_x0);
-    
-    if(!isfinite(x2))
+    if(!historial.exito && !historial.iteraciones.empty())
     {
-        cout << "\nAdvertencia: Valor fuera de rango. Deteniendo..." << endl;
-        break;
+        historial.exito = true; // Se alcanzó el máximo de iteraciones
     }
     
-    double f_x2 = evaluar_funcion(funcion_str, x2);
-    
-    if(isnan(f_x2))
-    {
-        cout << "\nAdvertencia: Funcion no evaluable en x = " << x2 << endl;
-        break;
-    }
-    
-    resultado.iteracion = i;
-    resultado.x_anterior = x1;
-    resultado.x_actual = x2;
-    resultado.f_x_actual = f_x2;
-    
-    if(x2 != 0)
-    {
-        resultado.error_absoluto = fabs(x2 - x1);
-        resultado.error_relativo = fabs((x2 - x1) / x2);
-        resultado.cifras_significativas = calcular_cifras_significativas(resultado.error_relativo);
-    }
-    else
-    {
-        resultado.error_absoluto = fabs(x2 - x1);
-        resultado.error_relativo = 0;
-        resultado.cifras_significativas = 15;
-    }
-    
-    // Verificar criterios de paro
-    bool detener = false;
-    
-    if(criterio == 1) // Por iteraciones
-    {
-        if(i >= max_iter) detener = true;
-    }
-    else if(criterio == 2) // Por error relativo
-    {
-        if(resultado.error_relativo < tol_error) detener = true;
-    }
-    else if(criterio == 3) // Por cifras significativas
-    {
-        if(resultado.cifras_significativas >= cifras_objetivo) detener = true;
-    }
-    
-    // Verificar convergencia (mismo resultado)
-    if(fabs(x2 - x1) < 1e-15)
-    {
-        cout << "\nConvergencia alcanzada (sin cambios entre iteraciones)." << endl;
-        detener = true;
-    }
-    
-    if(detener)
-    {
-        exito = true;
-        break;
-    }
-    
-    // Actualizar para siguiente iteración
-    x0 = x1;
-    f_x0 = f_x1;
-    x1 = x2;
-    f_x1 = f_x2;
+    return historial;
 }
 
-if(!exito && resultado.iteracion == max_iter)
+void mostrar_historial_completo(const HistorialCompleto& historial, int criterio)
 {
-    exito = true; // Se alcanzó el máximo de iteraciones
+    LimpiarPantalla();
+    cout << "==========================================" << endl;
+    cout << "        HISTORIAL DE ITERACIONES         " << endl;
+    cout << "==========================================" << endl;
+    
+    if(historial.iteraciones.empty())
+    {
+        cout << "No hay iteraciones para mostrar." << endl;
+        return;
+    }
+    
+    cout << fixed << setprecision(10);
+    cout << left;
+    
+    // Encabezados
+    cout << setw(6) << "Iter" 
+         << setw(18) << "x_anterior"
+         << setw(18) << "x_actual"
+         << setw(18) << "f(x)"
+         << setw(15) << "Error Abs"
+         << setw(15) << "Error Rel"
+         << setw(8) << "Cifras" << endl;
+    cout << string(98, '-') << endl;
+    
+    // Mostrar cada iteración
+    for(const auto& iter : historial.iteraciones)
+    {
+        cout << setw(6) << iter.iteracion
+             << setw(18) << iter.x_anterior
+             << setw(18) << iter.x_actual
+             << setw(18) << iter.f_x_actual
+             << setw(15) << iter.error_absoluto
+             << setw(15) << iter.error_relativo
+             << setw(8) << iter.cifras_significativas << endl;
+    }
+    
+    cout << string(98, '-') << endl;
+    
+    // Mostrar resultado final
+    const ResultadoIteracion& ultimo = historial.iteraciones.back();
+    cout << "\n==========================================" << endl;
+    cout << "           RESULTADO FINAL                " << endl;
+    cout << "==========================================" << endl;
+    cout << "Total de iteraciones: " << ultimo.iteracion << endl;
+    cout << "Valor aproximado de x: " << ultimo.x_actual << endl;
+    cout << "f(x) = " << ultimo.f_x_actual << endl;
+    cout << "Error absoluto: " << ultimo.error_absoluto << endl;
+    cout << "Error relativo: " << ultimo.error_relativo << endl;
+    cout << "Cifras significativas: " << ultimo.cifras_significativas << endl;
+    cout << "==========================================" << endl;
 }
 
-return resultado;
-}
-
-void mostrar_resultado(const ResultadoIteracion& resultado, int criterio)
+void mostrar_historiales_multiples(const vector<pair<RangoRaiz, HistorialCompleto>>& resultados, int criterio)
 {
-LimpiarPantalla();
-cout << "==========================================" << endl;
-cout << "             RESULTADO                    " << endl;
-cout << "==========================================" << endl;
-cout << fixed << setprecision(10);
-cout << "Iteraciones realizadas: " << resultado.iteracion << endl;
-cout << "Valor aproximado de x: " << resultado.x_actual << endl;
-cout << "f(x) = " << resultado.f_x_actual << endl;
-cout << "Error absoluto: " << resultado.error_absoluto << endl;
-cout << "Error relativo: " << resultado.error_relativo << endl;
-cout << "Cifras significativas: " << resultado.cifras_significativas << endl;
-cout << "==========================================" << endl;
-}
-
-void mostrar_resultados_multiples(const vector<pair<RangoRaiz, ResultadoIteracion>>& resultados, int criterio)
-{
-LimpiarPantalla();
-cout << "==========================================" << endl;
-cout << "         RESULTADOS MULTIPLES             " << endl;
-cout << "==========================================" << endl;
-cout << fixed << setprecision(10);
-
-for(size_t i = 0; i < resultados.size(); i++)
-{
-    cout << "\nRaiz " << (i+1) << " (rango inicial: ["
-         << resultados[i].first.inicio << ", " << resultados[i].first.fin << "]):" << endl;
-    cout << "  Iteraciones: " << resultados[i].second.iteracion << endl;
-    cout << "  x = " << resultados[i].second.x_actual << endl;
-    cout << "  f(x) = " << resultados[i].second.f_x_actual << endl;
-    cout << "  Error relativo: " << resultados[i].second.error_relativo << endl;
-    cout << "  Cifras significativas: " << resultados[i].second.cifras_significativas << endl;
-}
-cout << "\n==========================================" << endl;
-}
-
-bool preguntar_continuar(const string& mensaje)
-{
-LimpiarPantalla();
-cout << mensaje;
-char respuesta = _getch();
-return (respuesta == 'S' || respuesta == 's');
+    for(size_t i = 0; i < resultados.size(); i++)
+    {
+        LimpiarPantalla();
+        cout << "==========================================" << endl;
+        cout << "  RAIZ " << (i+1) << " DE " << resultados.size() << endl;
+        cout << "  Rango inicial: [" << resultados[i].first.inicio 
+             << ", " << resultados[i].first.fin << "]" << endl;
+        cout << "==========================================" << endl;
+        
+        const HistorialCompleto& historial = resultados[i].second;
+        
+        if(historial.iteraciones.empty())
+        {
+            cout << "No hay iteraciones para mostrar." << endl;
+            system("pause");
+            continue;
+        }
+        
+        cout << fixed << setprecision(10);
+        cout << left;
+        
+        // Encabezados
+        cout << setw(6) << "Iter" 
+             << setw(18) << "x_anterior"
+             << setw(18) << "x_actual"
+             << setw(18) << "f(x)"
+             << setw(15) << "Error Abs"
+             << setw(15) << "Error Rel"
+             << setw(8) << "Cifras" << endl;
+        cout << string(98, '-') << endl;
+        
+        // Mostrar cada iteración
+        for(const auto& iter : historial.iteraciones)
+        {
+            cout << setw(6) << iter.iteracion
+                 << setw(18) << iter.x_anterior
+                 << setw(18) << iter.x_actual
+                 << setw(18) << iter.f_x_actual
+                 << setw(15) << iter.error_absoluto
+                 << setw(15) << iter.error_relativo
+                 << setw(8) << iter.cifras_significativas << endl;
+        }
+        
+        cout << string(98, '-') << endl;
+        
+        // Resultado final
+        const ResultadoIteracion& ultimo = historial.iteraciones.back();
+        cout << "\nResultado final:" << endl;
+        cout << "  x = " << ultimo.x_actual << endl;
+        cout << "  f(x) = " << ultimo.f_x_actual << endl;
+        cout << "  Error relativo: " << ultimo.error_relativo << endl;
+        cout << "  Cifras significativas: " << ultimo.cifras_significativas << endl;
+        
+        system("pause");
+    }
 }
